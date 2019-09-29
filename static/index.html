@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Load Image</title>
+</head>
+<body>
+    <div>
+        <h2>Load a few images</h2>
+        <select id="image-kind">
+            <option value="/image/show/original">Original</option>
+            <option value="/image/show/preview">Preview</option>
+        </select>
+        <form id="image-load__form" action="/image/show/original" method=GET>
+            <label id="image[0]">image url 1:<input id="image_url[0]" type="text" name="image_url[0]">
+                <br>
+            </label>
+            <button id="submit_btn" type="submit">Load</button>
+            <input type="button" onclick="addField()" value="add">
+            <input type="button" onclick="removeField()" value="remove">
+        </form>
+    </div>
+    <div>
+        <h2>Load one original image</h2>
+        <form id="load__form" action="/image/load/original" method=GET>
+            <label>image url 1:<input type="text" name="image_url">
+                <br>
+            </label>
+            <button id="submit_btn" type="submit">Load</button>
+        </form>
+    </div>
+
+    <div>
+        <h2>Load one preview image</h2>
+        <form id="load__form" action="/image/load/preview" method=GET>
+            <label>image url 1:<input type="text" name="image_url">
+                <br>
+            </label>
+            <button id="submit_btn" type="submit">Load</button>
+        </form>
+    </div>
+</body>
+
+<script type='text/javascript'>
+    let number = 1;
+
+    function addField() {
+        let container = document.getElementById("image-load__form");
+
+        let input_element = document.createElement("label");
+        input_element.id = `image[${number}]`;
+        input_element.appendChild(document.createTextNode(`image url ${number + 1}:`))
+        let input = document.createElement("input");
+        input.id = `image_url[${number}]`;
+        input.type = "text";
+        input.name = `image_url[${number}]`;
+        input_element.appendChild(input);
+        input_element.appendChild(document.createElement("br"));
+        
+        let submit_btn = document.getElementById("submit_btn");
+
+        container.insertBefore(input_element, submit_btn);
+
+        number += 1;
+    }
+
+    function removeField() {
+        number -= 1;
+
+        let container = document.getElementById("image-load__form");
+        let input_element = document.getElementById(`image[${number}]`)
+        container.removeChild(input_element);
+    }
+
+    document.getElementById('image-kind').onchange = function() {
+        var newaction = this.value;
+        document.getElementById('image-load__form').action = newaction;
+    };
+</script>
+</html>
