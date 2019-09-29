@@ -130,3 +130,94 @@ fn main() -> io::Result<()> {
     .bind("127.0.0.1:8080")?
     .run()
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use actix_web::{test, http, dev::Service};
+    use std::{fs::File, io::Write};
+
+    #[test]
+    fn check_state_load_image() {
+        let state = State::new();
+
+        let res = state.load_image("https://sr.gallerix.ru/_UNK/1018810316/3526.jpg").unwrap();
+        let mut file = File::create("test_assets/res.jpg").unwrap();
+        file.write(&res).unwrap();
+        let expected_image = std::fs::File::open("test_assets/img.jpg").unwrap();
+
+        let result_metadata = file.metadata().unwrap();
+        let expected_metadata = expected_image.metadata().unwrap();
+
+        assert_eq!(result_metadata.len(), expected_metadata.len());
+    }
+
+    #[test]
+    fn test_index_ok() {
+        let req = test::TestRequest::with_header("content-type", "text/plain")
+            .to_http_request();
+
+        let resp = test::block_on(index(req)).unwrap();
+        assert_eq!(resp.status(), http::StatusCode::OK);
+    }
+
+    #[test]
+    fn test_load_original_image() {
+        let state = web::Data::new(Mutex::new(State::new()));
+        let mut app = test::init_service(App::new().register_data(state.clone()).route("/image/load/original", web::get().to(load_original_image)));
+        let req = test::TestRequest::get().uri("/image/load/original?image_url=https://sr.gallerix.ru/_UNK/1018810316/3526.jpg").to_request();
+        let resp = test::block_on(app.call(req)).unwrap();
+
+        assert!(resp.status().is_success());
+    }
+
+    #[test]
+    fn test_show_original_image() {
+        let state = web::Data::new(Mutex::new(State::new()));
+        let mut app = test::init_service(App::new().register_data(state.clone()).route("/image/show/original", web::get().to(show_original_image)));
+        let req = test::TestRequest::get()
+            .uri("/image/show/original?image_url[0]=https://sr.gallerix.ru/_UNK/1018810316/3526.jpg&image_url[1]=https://sr.gallerix.ru/_EX/856702129/885028076.jpg").to_request();
+        let resp = test::block_on(app.call(req)).unwrap();
+
+        assert!(resp.status().is_success());
+    }
+
+    #[test]
+    fn test_show_preview_image() {
+        let state = web::Data::new(Mutex::new(State::new()));
+        let mut app = test::init_service(App::new().register_data(state.clone()).route("/image/show/preview", web::get().to(show_preview_image)));
+        let req = test::TestRequest::get()
+            .uri("/image/show/preview?image_url[0]=https://sr.gallerix.ru/_UNK/1018810316/3526.jpg&image_url[1]=https://sr.gallerix.ru/_EX/856702129/885028076.jpg").to_request();
+        let resp = test::block_on(app.call(req)).unwrap();
+
+        assert!(resp.status().is_success());
+    }
+
+    #[test]
+    fn test_load_preview_image() {
+        let state = web::Data::new(Mutex::new(State::new()));
+
+        let mut app = test::init_service(App::new().register_data(state.clone()).route("/image/load/preview", web::get().to(load_preview_image)));
+        let req = test::TestRequest::get().uri("/image/load/preview?image_url=https://sr.gallerix.ru/_UNK/1018810316/3526.jpg").to_request();
+        let mut resp = test::block_on(app.call(req)).unwrap();
+
+        let v: Vec<u8> = match resp.take_body().as_ref().unwrap() {
+            actix_web::body::Body::Bytes(bytes) => { bytes.to_vec() },
+            _ => { Vec::new() }
+        };
+
+        let res_image = image::load_from_memory_with_format(&v, image::ImageFormat::JPEG).unwrap();
+
+        let mut preview = std::fs::File::create("test_assets/preview.jpg").unwrap();
+        preview.write(&v).unwrap();
+
+        let expected = std::fs::File::open("test_assets/preview_expected.jpg").unwrap();
+
+        let result_metadata = preview.metadata().unwrap();
+        let expected_metadata = expected.metadata().unwrap();
+
+        assert!(resp.status().is_success());
+        assert_eq!(result_metadata.len(), expected_metadata.len());
+        assert_eq!(res_image.dimensions(), (100, 100));
+    }
+}
